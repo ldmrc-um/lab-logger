@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+<title>Lab Session Log</title>
+<script>
+  const CONFIG = {
+    APPS_SCRIPT_URL: "https://script.google.com/macros/s/AKfycbxDfMTng9RjjTzhx3e0-0VrK5XHFqbUYzgWfIQHniox2OYbp6W7FwukmzEl1hIf01rTug/exec",
+    GOOGLE_CLIENT_ID: "548050020955-iumkfq4ch95ntrdpnl4hfmjenspkm1pg.apps.googleusercontent.com",
+    ROOMS: {
+      "Room A": ["Laser Cutter", "3D Printer #1", "3D Printer #2", "Vinyl Cutter"],
+      "Room B": ["CNC Mill", "Drill Press", "Band Saw", "Lathe"],
+      "Room C": ["Oscilloscope #1", "Oscilloscope #2", "Soldering Station", "PCB Etcher"],
+      "Room D": ["Workstation 1", "Workstation 2", "Workstation 3", "Workstation 4"],
+      "Room E": ["Sewing Machine", "Embroidery Machine", "Heat Press", "Cutting Table"],
+      "Room F": ["Camera Rig A", "Camera Rig B", "Lighting Kit", "Green Screen"],
+    }
+  };
+</script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  :root {
+    --navy:     #1B2E4B;
+    --blue:     #2563EB;
+    --blue-lt:  #EFF6FF;
+    --blue-bd:  #BFDBFE;
+    --green:    #059669;
+    --green-lt: #ECFDF5;
+    --green-bd: #6EE7B7;
+    --slate:    #64748B;
+    --ink:      #0F172A;
+    --bg:       #F1F5F9;
+    --card:     #FFFFFF;
+    --border:   #E2E8F0;
+    --red:      #DC2626;
+  }
+  body {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px 16px 60px;
+  }
+  .card {
+    background: var(--card);
+    border-radius: 20px;
+    width: 100%;
+    max-width: 420px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+    overflow: hidden;
+  }
+  .header {
+    background: var(--navy);
+    color: #fff;
+    padding: 20px 24px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .header-icon { font-size: 26px; }
+  .header-title { font-size: 18px; font-weight: 700; letter-spacing: -0.3px; }
+  .header-sub { font-size: 12px; opacity: 0.65; margin-top: 1px; }
+  .progress {
+    display: flex;
+    gap: 6px;
+    padding: 16px 24px 0;
+    justify-content: center;
+  }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--border); transition: background 0.25s; }
+  .dot.active { background: var(--blue); }
+  .step { padding: 20px 24px 28px; }
+  .step-label { font-size: 15px; font-weight: 600; color: var(--ink); margin-bottom: 14px; }
+  .user-strip {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--blue-lt); border: 1.5px solid var(--blue-bd);
+    border-radius: 12px; padding: 10px 14px; margin-bottom: 20px;
+  }
+  .user-avatar { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
+  .user-avatar-placeholder {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: var(--blue); color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 15px; flex-shrink: 0;
+  }
+  .user-name { font-size: 14px; font-weight: 600; color: var(--ink); }
+  .user-email { font-size: 12px; color: var(--slate); }
+  .signin-wrap {
+    padding: 32px 24px 36px;
+    display: flex; flex-direction: column; align-items: center; text-align: center; gap: 16px;
+  }
+  .signin-icon { font-size: 48px; }
+  .signin-title { font-size: 20px; font-weight: 700; color: var(--ink); }
+  .signin-sub { font-size: 14px; color: var(--slate); line-height: 1.5; }
+  .field-wrap { margin-bottom: 16px; }
+  .field-label { font-size: 12px; font-weight: 600; color: var(--slate); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+  .field-input {
+    width: 100%; padding: 13px 14px;
+    border: 1.5px solid var(--border); border-radius: 10px;
+    font-size: 15px; color: var(--ink); outline: none;
+    font-family: inherit; background: #fff; transition: border-color 0.15s;
+  }
+  .field-input:focus { border-color: var(--blue); }
+  .time-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+  .clock-display {
+    width: 100%; padding: 13px 14px;
+    border: 1.5px solid var(--border); border-radius: 10px;
+    font-size: 22px; font-weight: 700; color: var(--ink);
+    text-align: center; cursor: pointer; user-select: none;
+    background: #fff; transition: border-color 0.15s;
+  }
+  .clock-display:hover { border-color: var(--blue); }
+  .clock-display.active { border-color: var(--blue); color: var(--blue); }
+  .clock-popup {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.45);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 100; opacity: 0; pointer-events: none; transition: opacity 0.15s;
+  }
+  .clock-popup.open { opacity: 1; pointer-events: all; }
+  .clock-inner {
+    background: #fff; border-radius: 20px;
+    padding: 24px; width: 300px;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.18);
+  }
+  .clock-title { font-size: 13px; font-weight: 600; color: var(--slate); text-align: center; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.05em; }
+  .clock-readout {
+    font-size: 48px; font-weight: 800; color: var(--ink);
+    text-align: center; letter-spacing: -1px; margin-bottom: 16px;
+    display: flex; align-items: center; justify-content: center; gap: 2px;
+  }
+  .cr-sep { color: var(--slate); }
+  .cr-part { cursor: pointer; border-radius: 8px; padding: 0 6px; transition: background 0.15s; }
+  .cr-part.sel { background: var(--blue-lt); color: var(--blue); }
+  .cr-ampm { font-size: 20px; color: var(--slate); margin-left: 4px; align-self: flex-end; padding-bottom: 6px; }
+  .clock-face {
+    position: relative; width: 220px; height: 220px;
+    border-radius: 50%; background: var(--bg); margin: 0 auto 16px;
+  }
+  .clock-center {
+    position: absolute; top: 50%; left: 50%;
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--blue); transform: translate(-50%, -50%); z-index: 2;
+  }
+  .clock-hand {
+    position: absolute; bottom: 50%; left: 50%;
+    width: 2px; background: var(--blue);
+    transform-origin: bottom center;
+    border-radius: 2px 2px 0 0; margin-left: -1px;
+    transition: transform 0.15s; z-index: 1;
+  }
+  .clock-num {
+    position: absolute; width: 36px; height: 36px;
+    border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 600; color: var(--ink);
+    cursor: pointer; transition: background 0.15s, color 0.15s;
+    transform: translate(-50%, -50%); z-index: 2;
+  }
+  .clock-num:hover { background: var(--blue-lt); }
+  .clock-num.selected { background: var(--blue); color: #fff; }
+  .ampm-row { display: flex; gap: 8px; justify-content: center; margin-bottom: 16px; }
+  .ampm-btn {
+    flex: 1; padding: 10px; border-radius: 10px;
+    border: 1.5px solid var(--border); font-size: 14px; font-weight: 600;
+    cursor: pointer; color: var(--ink); background: #fff; transition: all 0.15s;
+  }
+  .ampm-btn.active { background: var(--blue); color: #fff; border-color: var(--blue); }
+  .clock-ok {
+    width: 100%; padding: 13px; border-radius: 12px;
+    background: var(--navy); color: #fff; border: none;
+    font-size: 15px; font-weight: 700; cursor: pointer;
+  }
+  .room-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+  .room-btn {
+    padding: 20px 8px; background: var(--blue-lt);
+    border: 2px solid var(--blue-bd); border-radius: 12px;
+    font-size: 15px; font-weight: 600; color: #1E40AF;
+    cursor: pointer; transition: all 0.15s;
+  }
+  .room-btn:hover { background: var(--blue); color: #fff; border-color: var(--blue); }
+  .machine-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+  .machine-btn {
+    padding: 14px 16px; background: var(--green-lt);
+    border: 2px solid var(--green-bd); border-radius: 10px;
+    font-size: 15px; font-weight: 500; color: #065F46;
+    cursor: pointer; text-align: left; transition: all 0.15s;
+  }
+  .machine-btn:hover { background: var(--green); color: #fff; border-color: var(--green); }
+  .summary { background: var(--bg); border-radius: 12px; padding: 16px; margin-bottom: 20px; }
+  .summary-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 7px 0; border-bottom: 1px solid var(--border);
+  }
+  .summary-row:last-child { border-bottom: none; }
+  .summary-key { font-size: 12px; color: var(--slate); font-weight: 500; }
+  .summary-val { font-size: 14px; color: var(--ink); font-weight: 600; text-align: right; }
+  .submit-btn {
+    width: 100%; padding: 16px; border-radius: 12px;
+    background: var(--navy); color: #fff; border: none;
+    font-size: 16px; font-weight: 700; cursor: pointer;
+    margin-bottom: 12px; transition: opacity 0.15s;
+  }
+  .submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .back-btn { background: none; border: none; color: var(--slate); font-size: 14px; cursor: pointer; padding: 4px 0; }
+  .done-wrap { padding: 40px 24px; text-align: center; }
+  .done-icon { font-size: 60px; margin-bottom: 16px; }
+  .done-title { font-size: 22px; font-weight: 700; color: var(--ink); margin-bottom: 8px; }
+  .done-sub { font-size: 14px; color: var(--slate); line-height: 1.7; margin-bottom: 28px; }
+  .done-btn {
+    padding: 14px 40px; background: var(--navy);
+    color: #fff; border: none; border-radius: 12px;
+    font-size: 16px; font-weight: 600; cursor: pointer;
+  }
+  .error-msg { color: var(--red); font-size: 13px; text-align: center; margin-bottom: 12px; }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<div class="card" id="app">
+  <div class="header">
+    <span class="header-icon">🔬</span>
+    <div>
+      <div class="header-title">Lab Session Log</div>
+      <div class="header-sub" id="header-sub">Sign in to continue</div>
+    </div>
+  </div>
+
+  <div class="progress hidden" id="progress">
+    <div class="dot" id="d0"></div>
+    <div class="dot" id="d1"></div>
+    <div class="dot" id="d2"></div>
+    <div class="dot" id="d3"></div>
+  </div>
+
+  <!-- SIGN IN -->
+  <div id="screen-signin">
+    <div class="signin-wrap">
+      <div class="signin-icon">🔐</div>
+      <div class="signin-title">Welcome</div>
+      <div class="signin-sub">Sign in with your Google account to log your lab session.</div>
+      <div id="g_id_onload"
+        data-client_id=""
+        data-context="signin"
+        data-ux_mode="popup"
+        data-callback="handleCredential"
+        data-auto_prompt="false">
+      </div>
+      <div class="g_id_signin"
+        data-type="standard"
+        data-shape="rectangular"
+        data-theme="outline"
+        data-text="sign_in_with"
+        data-size="large"
+        data-logo_alignment="left"
+        data-width="280">
+      </div>
+    </div>
+  </div>
+
+  <!-- DATE & TIME -->
+  <div id="screen-datetime" class="step hidden">
+    <div class="user-strip" id="user-strip">
+      <div class="user-avatar-placeholder" id="user-initial">?</div>
+      <div>
+        <div class="user-name" id="user-name-txt">—</div>
+        <div class="user-email" id="user-email-txt">—</div>
+      </div>
+    </div>
+    <div class="step-label">When is your session?</div>
+    <div class="field-wrap">
+      <div class="field-label">Date</div>
+      <input type="date" class="field-input" id="session-date" />
+    </div>
+    <div class="time-row">
+      <div>
+        <div class="field-label">Time in</div>
+        <div class="clock-display" id="time-in-display" onclick="openClock('in')">--:--</div>
+      </div>
+      <div>
+        <div class="field-label">Time out</div>
+        <div class="clock-display" id="time-out-display" onclick="openClock('out')">--:--</div>
+      </div>
+    </div>
+    <button class="submit-btn" onclick="goToRoom()">Next →</button>
+  </div>
+
+  <!-- ROOM -->
+  <div id="screen-room" class="step hidden">
+    <div class="step-label">Which room?</div>
+    <div class="room-grid" id="room-grid"></div>
+    <button class="back-btn" onclick="showScreen('datetime')">← Back</button>
+  </div>
+
+  <!-- MACHINE -->
+  <div id="screen-machine" class="step hidden">
+    <div class="step-label" id="machine-label">Which machine?</div>
+    <div class="machine-list" id="machine-list"></div>
+    <button class="back-btn" onclick="showScreen('room')">← Back</button>
+  </div>
+
+  <!-- CONFIRM -->
+  <div id="screen-confirm" class="step hidden">
+    <div class="step-label">Confirm your session</div>
+    <div class="summary">
+      <div class="summary-row"><span class="summary-key">Name</span><span class="summary-val" id="s-name">—</span></div>
+      <div class="summary-row"><span class="summary-key">Date</span><span class="summary-val" id="s-date">—</span></div>
+      <div class="summary-row"><span class="summary-key">Time in</span><span class="summary-val" id="s-timein">—</span></div>
+      <div class="summary-row"><span class="summary-key">Time out (est.)</span><span class="summary-val" id="s-timeout">—</span></div>
+      <div class="summary-row"><span class="summary-key">Room</span><span class="summary-val" id="s-room">—</span></div>
+      <div class="summary-row"><span class="summary-key">Machine</span><span class="summary-val" id="s-machine">—</span></div>
+    </div>
+    <div class="error-msg hidden" id="error-msg"></div>
+    <button class="submit-btn" id="submit-btn" onclick="submitLog()">Submit session</button>
+    <button class="back-btn" onclick="showScreen('machine')">← Back</button>
+  </div>
+
+  <!-- DONE -->
+  <div id="screen-done" class="hidden">
+    <div class="done-wrap">
+      <div class="done-icon">✅</div>
+      <div class="done-title">Session logged!</div>
+      <div class="done-sub" id="done-sub">—</div>
+      <button class="done-btn" onclick="resetApp()">Log another session</button>
+    </div>
+  </div>
+</div>
+
+<!-- CLOCK POPUP -->
+<div class="clock-popup" id="clock-popup">
+  <div class="clock-inner">
+    <div class="clock-title" id="clock-popup-title">Set time</div>
+    <div class="clock-readout">
+      <span class="cr-part" id="cr-h" onclick="clockMode='h';renderClock()">--</span>
+      <span class="cr-sep">:</span>
+      <span class="cr-part" id="cr-m" onclick="clockMode='m';renderClock()">--</span>
+      <span class="cr-ampm" id="cr-ampm">AM</span>
+    </div>
+    <div class="clock-face" id="clock-face">
+      <div class="clock-center"></div>
+      <div class="clock-hand" id="clock-hand"></div>
+    </div>
+    <div class="ampm-row">
+      <button class="ampm-btn" id="btn-am" onclick="setAmPm('AM')">AM</button>
+      <button class="ampm-btn" id="btn-pm" onclick="setAmPm('PM')">PM</button>
+    </div>
+    <button class="clock-ok" onclick="closeClock()">Set time</button>
+  </div>
+</div>
+
+<!-- Google Identity Services -->
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+
+<script>
+let state = { user: null, date: '', timeIn: null, timeOut: null, room: '', machine: '' };
+let clockTarget = 'in', clockMode = 'h', clockH = 9, clockM = 0, clockAmPm = 'AM';
+
+window.addEventListener('DOMContentLoaded', () => {
+  // Inject client ID into the GSI element
+  document.getElementById('g_id_onload').dataset.client_id = CONFIG.GOOGLE_CLIENT_ID;
+
+  const today = new Date();
+  const todayStr = today.toISOString().split('T')[0];
+  const dateInput = document.getElementById('session-date');
+  dateInput.value = todayStr;
+  dateInput.max = todayStr;
+
+  const roomGrid = document.getElementById('room-grid');
+  Object.keys(CONFIG.ROOMS).forEach(r => {
+    const btn = document.createElement('button');
+    btn.className = 'room-btn';
+    btn.textContent = r;
+    btn.onclick = () => selectRoom(r);
+    roomGrid.appendChild(btn);
+  });
+});
+
+// Called by Google after sign-in
+function handleCredential(response) {
+  const payload = parseJwt(response.credential);
+  state.user = { name: payload.name, email: payload.email, picture: payload.picture };
+
+  // Update user strip
+  const ph = document.getElementById('user-initial');
+  if (state.user.picture) {
+    ph.outerHTML = `<img src="${state.user.picture}" class="user-avatar" id="user-initial" referrerpolicy="no-referrer"/>`;
+  } else {
+    ph.textContent = state.user.name[0].toUpperCase();
+  }
+  document.getElementById('user-name-txt').textContent = state.user.name;
+  document.getElementById('user-email-txt').textContent = state.user.email;
+  document.getElementById('header-sub').textContent = state.user.email;
+  showScreen('datetime');
+}
+
+function parseJwt(token) {
+  const base64 = token.split('.')[1].replace(/-/g,'+').replace(/_/g,'/');
+  return JSON.parse(atob(base64));
+}
+
+const SCREENS = ['signin','datetime','room','machine','confirm','done'];
+const DOT_SCREENS = ['datetime','room','machine','confirm'];
+
+function showScreen(name) {
+  SCREENS.forEach(s => document.getElementById(`screen-${s}`).classList.add('hidden'));
+  document.getElementById(`screen-${name}`).classList.remove('hidden');
+  const idx = DOT_SCREENS.indexOf(name);
+  const prog = document.getElementById('progress');
+  if (idx >= 0) {
+    prog.classList.remove('hidden');
+    DOT_SCREENS.forEach((s, i) => document.getElementById(`d${i}`).classList.toggle('active', i <= idx));
+  } else {
+    prog.classList.add('hidden');
+  }
+}
+
+function toTotalMinutes(t) {
+  let h24 = t.h12 % 12 + (t.ampm === 'PM' ? 12 : 0);
+  return h24 * 60 + t.m;
+}
+
+function goToRoom() {
+  const dateVal = document.getElementById('session-date').value;
+  if (!dateVal) { alert('Please select a date.'); return; }
+  if (!state.timeIn) { alert('Please set your time in.'); return; }
+  if (!state.timeOut) { alert('Please set your estimated time out.'); return; }
+  if (toTotalMinutes(state.timeOut) <= toTotalMinutes(state.timeIn)) {
+    alert('Time out must be after time in.'); return;
+  }
+  state.date = dateVal;
+  showScreen('room');
+}
+
+function selectRoom(room) {
+  state.room = room;
+  document.getElementById('machine-label').textContent = `${room} — which machine?`;
+  const ml = document.getElementById('machine-list');
+  ml.innerHTML = '';
+  CONFIG.ROOMS[room].forEach(m => {
+    const btn = document.createElement('button');
+    btn.className = 'machine-btn';
+    btn.textContent = m;
+    btn.onclick = () => selectMachine(m);
+    ml.appendChild(btn);
+  });
+  showScreen('machine');
+}
+
+function selectMachine(machine) {
+  state.machine = machine;
+  document.getElementById('s-name').textContent = state.user.name;
+  document.getElementById('s-date').textContent = formatDate(state.date);
+  document.getElementById('s-timein').textContent = formatTime(state.timeIn);
+  document.getElementById('s-timeout').textContent = formatTime(state.timeOut);
+  document.getElementById('s-room').textContent = state.room;
+  document.getElementById('s-machine').textContent = state.machine;
+  showScreen('confirm');
+}
+
+async function submitLog() {
+  const btn = document.getElementById('submit-btn');
+  const errEl = document.getElementById('error-msg');
+  btn.disabled = true;
+  btn.textContent = 'Submitting…';
+  errEl.classList.add('hidden');
+
+  try {
+    await fetch(CONFIG.APPS_SCRIPT_URL, {
+      method: 'POST', mode: 'no-cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: state.user.name, email: state.user.email,
+        date: state.date, timeIn: formatTime(state.timeIn),
+        timeOut: formatTime(state.timeOut), room: state.room,
+        machine: state.machine, submittedAt: new Date().toISOString(),
+      }),
+    });
+    document.getElementById('done-sub').innerHTML =
+      `<strong>${state.user.name}</strong><br>${formatDate(state.date)} · ${formatTime(state.timeIn)} – ${formatTime(state.timeOut)}<br>${state.room} · ${state.machine}`;
+    showScreen('done');
+  } catch(e) {
+    errEl.textContent = "Couldn't connect. Check your internet and try again.";
+    errEl.classList.remove('hidden');
+    btn.disabled = false;
+    btn.textContent = 'Submit session';
+  }
+}
+
+function resetApp() {
+  state.date = ''; state.timeIn = null; state.timeOut = null; state.room = ''; state.machine = '';
+  document.getElementById('time-in-display').textContent = '--:--';
+  document.getElementById('time-out-display').textContent = '--:--';
+  document.getElementById('time-in-display').classList.remove('active');
+  document.getElementById('time-out-display').classList.remove('active');
+  document.getElementById('session-date').value = new Date().toISOString().split('T')[0];
+  showScreen('datetime');
+}
+
+function openClock(target) {
+  clockTarget = target;
+  clockMode = 'h';
+  const existing = target === 'in' ? state.timeIn : state.timeOut;
+  if (existing) { clockH = existing.h12; clockM = existing.m; clockAmPm = existing.ampm; }
+  else { clockH = 9; clockM = 0; clockAmPm = 'AM'; }
+  document.getElementById('clock-popup-title').textContent = target === 'in' ? 'Set time in' : 'Set time out';
+  document.getElementById('clock-popup').classList.add('open');
+  renderClock();
+}
+
+function closeClock() {
+  const timeObj = { h12: clockH, m: clockM, ampm: clockAmPm };
+  if (clockTarget === 'in') {
+    state.timeIn = timeObj;
+    document.getElementById('time-in-display').textContent = formatTime(timeObj);
+    document.getElementById('time-in-display').classList.add('active');
+    if (!state.timeOut) {
+      const timeOut30 = addMinutes(timeObj, 30);
+      state.timeOut = timeOut30;
+      document.getElementById('time-out-display').textContent = formatTime(timeOut30);
+      document.getElementById('time-out-display').classList.add('active');
+    }
+  } else {
+    state.timeOut = timeObj;
+    document.getElementById('time-out-display').textContent = formatTime(timeObj);
+    document.getElementById('time-out-display').classList.add('active');
+  }
+  document.getElementById('clock-popup').classList.remove('open');
+}
+
+function addMinutes(t, mins) {
+  let h24 = t.h12 % 12 + (t.ampm === 'PM' ? 12 : 0);
+  let total = h24 * 60 + t.m + mins;
+  total = total % (24 * 60);
+  const newH24 = Math.floor(total / 60);
+  const newM = total % 60;
+  const newAmPm = newH24 < 12 ? 'AM' : 'PM';
+  const newH12 = newH24 % 12 === 0 ? 12 : newH24 % 12;
+  return { h12: newH12, m: newM, ampm: newAmPm };
+}
+
+function renderClock() {
+  const face = document.getElementById('clock-face');
+  face.querySelectorAll('.clock-num').forEach(n => n.remove());
+  const radius = 88, center = 110;
+  let items, selected;
+  if (clockMode === 'h') {
+    items = [12,1,2,3,4,5,6,7,8,9,10,11]; selected = clockH;
+  } else {
+    items = [0,5,10,15,20,25,30,35,40,45,50,55]; selected = clockM;
+  }
+  items.forEach((val, i) => {
+    const angle = (i / items.length) * 2 * Math.PI - Math.PI / 2;
+    const x = center + radius * Math.cos(angle);
+    const y = center + radius * Math.sin(angle);
+    const num = document.createElement('div');
+    num.className = 'clock-num' + (val === selected ? ' selected' : '');
+    num.textContent = clockMode === 'm' ? String(val).padStart(2,'0') : val;
+    num.style.left = x + 'px';
+    num.style.top = y + 'px';
+    num.onclick = () => {
+      if (clockMode === 'h') { clockH = val; clockMode = 'm'; }
+      else { clockM = val; }
+      renderClock();
+    };
+    face.appendChild(num);
+  });
+  const hand = document.getElementById('clock-hand');
+  const handAngle = clockMode === 'h' ? ((clockH % 12) / 12) * 360 : (clockM / 60) * 360;
+  hand.style.height = (radius - 18) + 'px';
+  hand.style.transform = `rotate(${handAngle}deg)`;
+  document.getElementById('cr-h').textContent = String(clockH).padStart(2,'0');
+  document.getElementById('cr-m').textContent = String(clockM).padStart(2,'0');
+  document.getElementById('cr-ampm').textContent = clockAmPm;
+  document.getElementById('cr-h').classList.toggle('sel', clockMode === 'h');
+  document.getElementById('cr-m').classList.toggle('sel', clockMode === 'm');
+  document.getElementById('btn-am').classList.toggle('active', clockAmPm === 'AM');
+  document.getElementById('btn-pm').classList.toggle('active', clockAmPm === 'PM');
+}
+
+function setAmPm(val) { clockAmPm = val; renderClock(); }
+
+function formatTime(t) {
+  if (!t) return '--:--';
+  return `${String(t.h12).padStart(2,'0')}:${String(t.m).padStart(2,'0')} ${t.ampm}`;
+}
+
+function formatDate(d) {
+  if (!d) return '—';
+  const [y,m,day] = d.split('-');
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return `${parseInt(day)} ${months[parseInt(m)-1]} ${y}`;
+}
+
+document.getElementById('clock-popup').addEventListener('click', function(e) {
+  if (e.target === this) closeClock();
+});
+</script>
+</body>
+</html>
