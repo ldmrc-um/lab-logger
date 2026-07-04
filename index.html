@@ -1,4 +1,4 @@
-<!DOCTYPE html> 
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
@@ -9,11 +9,12 @@
     APPS_SCRIPT_URL: "https://script.google.com/macros/s/AKfycbxDfMTng9RjjTzhx3e0-0VrK5XHFqbUYzgWfIQHniox2OYbp6W7FwukmzEl1hIf01rTug/exec",
     GOOGLE_CLIENT_ID: "548050020955-iumkfq4ch95ntrdpnl4hfmjenspkm1pg.apps.googleusercontent.com",
     ROOMS: {
-      "Probe": ["Laser Cutter", "3D Printer #1", "3D Printer #2", "Vinyl Cutter"],
-      "Photoluminescent": ["CNC Mill", "Drill Press", "Band Saw", "Lathe"],
-      "Lithography": ["Mask Aligner", "Microscope", "Constant Oven"],
-      "Fabrication": ["E-Beam", "ICP", "ALD", "RTA", "Profolimeter", "Furnace"],
-      "MOCVD": ["SR2000", "SR4000"],
+      "Room A": ["Laser Cutter", "3D Printer #1", "3D Printer #2", "Vinyl Cutter"],
+      "Room B": ["CNC Mill", "Drill Press", "Band Saw", "Lathe"],
+      "Room C": ["Oscilloscope #1", "Oscilloscope #2", "Soldering Station", "PCB Etcher"],
+      "Room D": ["Workstation 1", "Workstation 2", "Workstation 3", "Workstation 4"],
+      "Room E": ["Sewing Machine", "Embroidery Machine", "Heat Press", "Cutting Table"],
+      "Room F": ["Camera Rig A", "Camera Rig B", "Lighting Kit", "Green Screen"],
     }
   };
 </script>
@@ -284,13 +285,14 @@
       </div>
     </div>
     <button class="submit-btn" onclick="goToRoom()">Next →</button>
+    <button class="back-btn" onclick="showScreen('machine')">← Back</button>
   </div>
 
   <!-- ROOM -->
   <div id="screen-room" class="step hidden">
     <div class="step-label">Which room?</div>
     <div class="room-grid" id="room-grid"></div>
-    <button class="back-btn" onclick="showScreen('datetime')">← Back</button>
+    <button class="back-btn" onclick="showScreen('signin')">← Back</button>
   </div>
 
   <!-- MACHINE -->
@@ -313,7 +315,7 @@
     </div>
     <div class="error-msg hidden" id="error-msg"></div>
     <button class="submit-btn" id="submit-btn" onclick="submitLog()">Submit session</button>
-    <button class="back-btn" onclick="showScreen('machine')">← Back</button>
+    <button class="back-btn" onclick="showScreen('datetime')">← Back</button>
   </div>
 
   <!-- DONE -->
@@ -366,22 +368,6 @@ window.addEventListener('DOMContentLoaded', () => {
   dateInput.value = todayStr;
   dateInput.max = todayStr;
 
-  // Default time in to current time
-  const nowH24 = today.getHours();
-  const nowM = Math.floor(today.getMinutes() / 5) * 5;
-  const nowAmPm = nowH24 < 12 ? 'AM' : 'PM';
-  const nowH12 = nowH24 % 12 === 0 ? 12 : nowH24 % 12;
-  const defaultTimeIn = { h12: nowH12, m: nowM, ampm: nowAmPm };
-  state.timeIn = defaultTimeIn;
-  document.getElementById('time-in-display').textContent = formatTime(defaultTimeIn);
-  document.getElementById('time-in-display').classList.add('active');
-
-  // Default time out to +30 mins
-  const defaultTimeOut = addMinutes(defaultTimeIn, 30);
-  state.timeOut = defaultTimeOut;
-  document.getElementById('time-out-display').textContent = formatTime(defaultTimeOut);
-  document.getElementById('time-out-display').classList.add('active');
-
   const roomGrid = document.getElementById('room-grid');
   Object.keys(CONFIG.ROOMS).forEach(r => {
     const btn = document.createElement('button');
@@ -407,7 +393,7 @@ function handleCredential(response) {
   document.getElementById('user-name-txt').textContent = state.user.name;
   document.getElementById('user-email-txt').textContent = state.user.email;
   document.getElementById('header-sub').textContent = state.user.email;
-  showScreen('datetime');
+  showScreen('room');
 }
 
 function parseJwt(token) {
@@ -415,8 +401,8 @@ function parseJwt(token) {
   return JSON.parse(atob(base64));
 }
 
-const SCREENS = ['signin','datetime','room','machine','confirm','done'];
-const DOT_SCREENS = ['datetime','room','machine','confirm'];
+const SCREENS = ['signin','room','machine','datetime','confirm','done'];
+const DOT_SCREENS = ['room','machine','datetime','confirm'];
 
 function showScreen(name) {
   SCREENS.forEach(s => document.getElementById(`screen-${s}`).classList.add('hidden'));
@@ -445,7 +431,7 @@ function goToRoom() {
     alert('Time out must be after time in.'); return;
   }
   state.date = dateVal;
-  showScreen('room');
+  showScreen('confirm');
 }
 
 function selectRoom(room) {
@@ -465,13 +451,14 @@ function selectRoom(room) {
 
 function selectMachine(machine) {
   state.machine = machine;
+  refreshDefaultTimes();
   document.getElementById('s-name').textContent = state.user.name;
   document.getElementById('s-date').textContent = formatDate(state.date);
   document.getElementById('s-timein').textContent = formatTime(state.timeIn);
   document.getElementById('s-timeout').textContent = formatTime(state.timeOut);
   document.getElementById('s-room').textContent = state.room;
   document.getElementById('s-machine').textContent = state.machine;
-  showScreen('confirm');
+  showScreen('datetime');
 }
 
 async function submitLog() {
@@ -510,7 +497,31 @@ function resetApp() {
   document.getElementById('time-in-display').classList.remove('active');
   document.getElementById('time-out-display').classList.remove('active');
   document.getElementById('session-date').value = new Date().toISOString().split('T')[0];
-  showScreen('datetime');
+  showScreen('room');
+}
+
+
+function refreshDefaultTimes() {
+  // Only refresh if user hasn't manually changed times
+  const today = new Date();
+  const todayStr = today.toISOString().split('T')[0];
+  const dateInput = document.getElementById('session-date');
+  dateInput.value = todayStr;
+  dateInput.max = todayStr;
+
+  const nowH24 = today.getHours();
+  const nowM = Math.floor(today.getMinutes() / 5) * 5;
+  const nowAmPm = nowH24 < 12 ? 'AM' : 'PM';
+  const nowH12 = nowH24 % 12 === 0 ? 12 : nowH24 % 12;
+  const defaultTimeIn = { h12: nowH12, m: nowM, ampm: nowAmPm };
+  state.timeIn = defaultTimeIn;
+  document.getElementById('time-in-display').textContent = formatTime(defaultTimeIn);
+  document.getElementById('time-in-display').classList.add('active');
+
+  const defaultTimeOut = addMinutes(defaultTimeIn, 30);
+  state.timeOut = defaultTimeOut;
+  document.getElementById('time-out-display').textContent = formatTime(defaultTimeOut);
+  document.getElementById('time-out-display').classList.add('active');
 }
 
 function openClock(target) {
