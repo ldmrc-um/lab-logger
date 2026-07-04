@@ -366,6 +366,22 @@ window.addEventListener('DOMContentLoaded', () => {
   dateInput.value = todayStr;
   dateInput.max = todayStr;
 
+  // Default time in to current time
+  const nowH24 = today.getHours();
+  const nowM = Math.floor(today.getMinutes() / 5) * 5;
+  const nowAmPm = nowH24 < 12 ? 'AM' : 'PM';
+  const nowH12 = nowH24 % 12 === 0 ? 12 : nowH24 % 12;
+  const defaultTimeIn = { h12: nowH12, m: nowM, ampm: nowAmPm };
+  state.timeIn = defaultTimeIn;
+  document.getElementById('time-in-display').textContent = formatTime(defaultTimeIn);
+  document.getElementById('time-in-display').classList.add('active');
+
+  // Default time out to +30 mins
+  const defaultTimeOut = addMinutes(defaultTimeIn, 30);
+  state.timeOut = defaultTimeOut;
+  document.getElementById('time-out-display').textContent = formatTime(defaultTimeOut);
+  document.getElementById('time-out-display').classList.add('active');
+
   const roomGrid = document.getElementById('room-grid');
   Object.keys(CONFIG.ROOMS).forEach(r => {
     const btn = document.createElement('button');
